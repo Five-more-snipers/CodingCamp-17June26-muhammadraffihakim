@@ -2,95 +2,79 @@
 <html lang="en">
 <head>
   <script>
-    (function () {
-      try {
-        var theme = JSON.parse(localStorage.getItem('tld_theme'));
-        if (theme === 'dark' || theme === 'light') {
-          document.documentElement.dataset.theme = theme;
-        } else {
-          document.documentElement.dataset.theme =
-            window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-      } catch (e) {
-        document.documentElement.dataset.theme =
-          window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      }
-    })();
+    try {
+      var t = JSON.parse(localStorage.getItem('tld_theme'));
+      document.documentElement.dataset.theme = (t === 'dark' || t === 'light') ? t
+        : (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
+    } catch(e) {
+      document.documentElement.dataset.theme =
+        matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+    }
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>To-Do Life Dashboard</title>
+  <title>Life Dashboard</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-  <!-- Greeting Header -->
   <header id="greeting-widget">
-    <div class="greeting-clock">
-      <span id="time-display">00:00:00</span>
+    <div class="header-left">
+      <div id="time-display">00:00:00</div>
+      <div id="date-display">Loading…</div>
     </div>
-    <div class="greeting-date">
-      <span id="date-display">Monday, 14 July 2025</span>
+    <div class="header-center">
+      <div id="greeting-display">Good Morning</div>
+      <div class="name-row">
+        <input id="name-input" type="text" maxlength="50" placeholder="Your name…" autocomplete="off">
+        <button id="btn-save-name">Save</button>
+        <span id="name-error" class="err" aria-live="polite"></span>
+      </div>
     </div>
-    <div class="greeting-message">
-      <span id="greeting-display">Good Morning</span>
-    </div>
-    <div class="greeting-name-form">
-      <input id="name-input" type="text" maxlength="50"
-             placeholder="Enter your name…" autocomplete="off">
-      <button id="btn-save-name">Save</button>
-      <span id="name-error" class="error-hint" aria-live="polite"></span>
-    </div>
-    <button id="btn-theme-toggle" aria-label="Toggle theme">🌙</button>
+    <button id="btn-theme-toggle" aria-label="Toggle theme" title="Toggle theme">🌙</button>
   </header>
 
-  <main class="dashboard-grid">
+  <main class="grid">
 
-    <!-- Focus Timer Section -->
-    <section id="timer-section" class="widget">
-      <h2 class="widget-title">Focus Timer</h2>
-      <div id="timer-display" class="timer-display">25:00</div>
-      <div id="timer-completion" class="timer-completion hidden" aria-live="polite">
-        🎉 Session complete! Take a break.
+    <section class="card" id="timer-section">
+      <h2 class="card-title">⏱ Focus Timer</h2>
+      <div id="timer-display" class="clock">25:00</div>
+      <div id="timer-completion" class="banner hidden">🎉 Session complete! Take a break.</div>
+      <div class="btn-row">
+        <button id="btn-start" class="btn-accent">▶ Start</button>
+        <button id="btn-stop" disabled>⏸ Stop</button>
+        <button id="btn-reset">↺ Reset</button>
       </div>
-      <div class="timer-controls">
-        <button id="btn-start">Start</button>
-        <button id="btn-stop" disabled>Stop</button>
-        <button id="btn-reset">Reset</button>
-      </div>
-      <div class="timer-config">
+      <div class="duration-row">
         <label for="duration-input">Duration (min)</label>
         <input id="duration-input" type="number" min="1" max="120" value="25">
-        <button id="btn-save-duration">Save</button>
-        <span id="duration-error" class="error-hint" aria-live="polite"></span>
+        <button id="btn-save-duration" class="btn-accent">Set</button>
+        <span id="duration-error" class="err" aria-live="polite"></span>
       </div>
     </section>
 
-    <!-- To-Do List Section -->
-    <section id="todo-section" class="widget">
-      <h2 class="widget-title">To-Do List</h2>
-      <div class="todo-input-row">
-        <input id="task-input" type="text" maxlength="200"
-               placeholder="Add a new task…" autocomplete="off">
-        <button id="btn-add-task">Add</button>
+    <section class="card" id="todo-section">
+      <h2 class="card-title">✅ To-Do List</h2>
+      <div class="input-row">
+        <input id="task-input" type="text" maxlength="200" placeholder="Add a task…" autocomplete="off">
+        <button id="btn-add-task" class="btn-accent">Add</button>
       </div>
-      <span id="task-error" class="error-hint" aria-live="polite"></span>
-      <ul id="task-list" aria-label="Task list"></ul>
+      <span id="task-error" class="err" aria-live="polite"></span>
+      <ul id="task-list"></ul>
     </section>
 
-    <!-- Quick Links Section -->
-    <section id="links-section" class="widget">
-      <h2 class="widget-title">Quick Links</h2>
-      <div class="links-input-row">
-        <input id="link-name-input" type="text" maxlength="100"
-               placeholder="Link name…" autocomplete="off">
-        <span id="link-name-error" class="error-hint" aria-live="polite"></span>
-        <input id="link-url-input" type="url" maxlength="2048"
-               placeholder="https://…" autocomplete="off">
-        <span id="link-url-error" class="error-hint" aria-live="polite"></span>
-        <button id="btn-add-link">Add</button>
+    <section class="card" id="links-section">
+      <h2 class="card-title">🔗 Quick Links</h2>
+      <div class="links-form">
+        <input id="link-name-input" type="text" maxlength="100" placeholder="Name…" autocomplete="off">
+        <input id="link-url-input" type="url" maxlength="2048" placeholder="https://…" autocomplete="off">
+        <button id="btn-add-link" class="btn-accent">Add</button>
       </div>
-      <div id="links-list" aria-label="Quick links"></div>
+      <div class="links-errors">
+        <span id="link-name-error" class="err" aria-live="polite"></span>
+        <span id="link-url-error" class="err" aria-live="polite"></span>
+      </div>
+      <div id="links-list"></div>
     </section>
 
   </main>
