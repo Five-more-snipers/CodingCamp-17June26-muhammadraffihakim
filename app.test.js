@@ -1,5 +1,5 @@
 const fc = require('fast-check');
-const { KEYS, Storage, State, Theme, Timer, Greeting, formatTime, formatDate, getGreeting, composeGreeting } = require('./app');
+const { KEYS, Storage, State, Theme, Timer, Greeting, formatTime, formatDate, getGreeting, composeGreeting } = require('./js/app');
 
 describe('Storage', () => {
   beforeEach(() => {
@@ -402,7 +402,7 @@ describe('Timer – countdown invariants', () => {
 
 // ─── To-Do List – validation properties ──────────────────────────────────────
 
-const { validateTaskText, createTask } = require('./app');
+const { validateTaskText, createTask } = require('./js/app');
 
 describe('To-Do List – validation', () => {
   // Feature: todo-life-dashboard, Property 12: Task Addition Grows Task List

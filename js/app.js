@@ -407,7 +407,148 @@
     };
   }
 
-  // (TodoList namespace added in tasks 7.3 – 7.6)
+  /** Escapes HTML special chars to prevent XSS in innerHTML. */
+  function _esc(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  const TodoList = {
+    init() {
+      const raw = Storage.load(KEYS.TASKS, []);
+      State.tasks = Array.isArray(raw)
+        ? raw.map(t => ({ ...t, editing: false }))
+        : [];
+      TodoList.render();
+    },
+
+    addTask(text) {
+      const v = validateTaskText(text);
+      const errorEl = document.getElementById("task-error");
+      if (!v.ok) {
+        if (errorEl) errorEl.textContent = v.error;
+        return;
+      }
+      if (errorEl) errorEl.textContent = "";
+      State.tasks.push(createTask(text));
+      TodoList._persist();
+      TodoList.render();
+    },
+
+    deleteTask(id) {
+      State.tasks = State.tasks.filter(t => t.id !== id);
+      TodoList._persist();
+      TodoList.render();
+    },
+
+    toggleTask(id) {
+      const task = State.tasks.find(t => t.id === id);
+      if (task) task.done = !task.done;
+      TodoList._persist();
+      TodoList.render();
+    },
+
+    startEdit(id) {
+      const task = State.tasks.find(t => t.id === id);
+      if (task) task.editing = true;
+      TodoList.render();
+    },
+
+    confirmEdit(id, text) {
+      const task = State.tasks.find(t => t.id === id);
+      if (!task) return;
+      const trimmed = (text || "").trim();
+      if (!trimmed) {
+        // Show error on the inline input
+        const li = document.querySelector(`[data-id="${id}"]`);
+        if (li) {
+          const errEl = li.querySelector(".edit-error");
+          if (errEl) errEl.textContent = "Task cannot be empty.";
+        }
+        return;
+      }
+      task.text = trimmed;
+      task.editing = false;
+      TodoList._persist();
+      TodoList.render();
+    },
+
+    cancelEdit(id) {
+      const task = State.tasks.find(t => t.id === id);
+      if (task) task.editing = false;
+      TodoList.render();
+    },
+
+    handleClick(e) {
+      const li = e.target.closest("[data-id]");
+      if (!li) return;
+      const id = li.dataset.id;
+      if (e.target.classList.contains("task-check")) {
+        TodoList.toggleTask(id);
+      } else if (e.target.classList.contains("btn-delete-task")) {
+        TodoList.deleteTask(id);
+      } else if (e.target.classList.contains("btn-edit-task")) {
+        TodoList.startEdit(id);
+      } else if (e.target.classList.contains("btn-save-edit")) {
+        const input = li.querySelector(".task-edit-input");
+        TodoList.confirmEdit(id, input ? input.value : "");
+      } else if (e.target.classList.contains("btn-cancel-edit")) {
+        TodoList.cancelEdit(id);
+      }
+    },
+
+    handleKeydown(e) {
+      const li = e.target.closest("[data-id]");
+      if (!li) return;
+      const id = li.dataset.id;
+      if (e.target.classList.contains("task-edit-input")) {
+        if (e.key === "Enter") {
+          TodoList.confirmEdit(id, e.target.value);
+        } else if (e.key === "Escape") {
+          TodoList.cancelEdit(id);
+        }
+      }
+    },
+
+    render() {
+      const list = document.getElementById("task-list");
+      if (!list) return;
+      list.innerHTML = "";
+      State.tasks.forEach(task => list.appendChild(TodoList.renderItem(task)));
+    },
+
+    renderItem(task) {
+      const li = document.createElement("li");
+      li.className = "task-item";
+      li.dataset.id = task.id;
+
+      if (task.editing) {
+        li.innerHTML = `
+        <input type="text" class="task-edit-input" value="${_esc(task.text)}" maxlength="200" aria-label="Edit task">
+        <button class="btn-save-edit" aria-label="Save edit">✔</button>
+        <button class="btn-cancel-edit" aria-label="Cancel edit">✖</button>
+        <span class="edit-error error-hint" aria-live="polite"></span>
+      `;
+      } else {
+        li.innerHTML = `
+        <input type="checkbox" class="task-check" aria-label="Mark task complete"${task.done ? " checked" : ""}>
+        <span class="task-text${task.done ? " task-done" : ""}">${_esc(task.text)}</span>
+        <button class="btn-edit-task" aria-label="Edit task">✏️</button>
+        <button class="btn-delete-task" aria-label="Delete task">🗑️</button>
+      `;
+      }
+      return li;
+    },
+
+    _persist() {
+      const toSave = State.tasks.map(({ editing, ...rest }) => rest);
+      Storage.save(KEYS.TASKS, toSave);
+    },
+  };
 
   // ─── QUICK LINKS ──────────────────────────────────────────────────────────────
   // Requirements: 7.1, 7.2, 7.7
@@ -461,7 +602,63 @@
     };
   }
 
-  // (QuickLinks namespace added in task 8.3)
+  const QuickLinks = {
+    init() {
+      const raw = Storage.load(KEYS.LINKS, []);
+      State.links = Array.isArray(raw) ? raw : [];
+      QuickLinks.render();
+    },
+
+    addLink(name, url) {
+      const nameResult = validateLinkName(name);
+      const urlResult  = validateURL(url);
+      const nameErr = document.getElementById("link-name-error");
+      const urlErr  = document.getElementById("link-url-error");
+      if (nameErr) nameErr.textContent = nameResult.ok ? "" : nameResult.error;
+      if (urlErr)  urlErr.textContent  = urlResult.ok  ? "" : urlResult.error;
+      if (!nameResult.ok || !urlResult.ok) return;
+      State.links.push(createLink(name, url));
+      Storage.save(KEYS.LINKS, State.links);
+      QuickLinks.render();
+    },
+
+    deleteLink(id) {
+      State.links = State.links.filter(l => l.id !== id);
+      Storage.save(KEYS.LINKS, State.links);
+      QuickLinks.render();
+    },
+
+    handleClick(e) {
+      const item = e.target.closest("[data-id]");
+      if (!item) return;
+      if (e.target.classList.contains("btn-delete-link")) {
+        QuickLinks.deleteLink(item.dataset.id);
+      }
+    },
+
+    render() {
+      const container = document.getElementById("links-list");
+      if (!container) return;
+      container.innerHTML = "";
+      if (State.links.length === 0) {
+        container.innerHTML = `<p style="color:var(--color-muted);font-size:0.875rem;">No links yet. Add one above.</p>`;
+        return;
+      }
+      State.links.forEach(link => container.appendChild(QuickLinks.renderItem(link)));
+    },
+
+    renderItem(link) {
+      const div = document.createElement("div");
+      div.className = "link-item";
+      div.dataset.id = link.id;
+      div.innerHTML = `
+      <a href="${_esc(link.url)}" target="_blank" rel="noopener noreferrer"
+         class="link-btn">${_esc(link.name)}</a>
+      <button class="btn-delete-link" aria-label="Delete link">🗑️</button>
+    `;
+      return div;
+    },
+  };
 
   // ─── THEME ────────────────────────────────────────────────────────────────────
   // Requirements: 8.1–8.6
@@ -523,11 +720,85 @@
   };
 
   // ─── BOOTSTRAP ────────────────────────────────────────────────────────────────
-  // (Populated in task 10.1)
+
+  const Bootstrap = {
+    init() {
+      Theme.init();
+      Greeting.init();
+      Timer.init();
+      TodoList.init();
+      QuickLinks.init();
+
+      // ── Greeting bindings ──
+      document.getElementById("btn-save-name")
+        .addEventListener("click", () => {
+          Greeting.saveName(document.getElementById("name-input").value);
+        });
+      document.getElementById("name-input")
+        .addEventListener("keydown", e => {
+          if (e.key === "Enter") Greeting.saveName(e.target.value);
+        });
+
+      // ── Theme binding ──
+      document.getElementById("btn-theme-toggle")
+        .addEventListener("click", () => Theme.toggle());
+
+      // ── Timer bindings ──
+      document.getElementById("btn-start")
+        .addEventListener("click", () => Timer.start());
+      document.getElementById("btn-stop")
+        .addEventListener("click", () => Timer.stop());
+      document.getElementById("btn-reset")
+        .addEventListener("click", () => Timer.reset());
+      document.getElementById("btn-save-duration")
+        .addEventListener("click", () =>
+          Timer.saveDuration(document.getElementById("duration-input").value));
+
+      // ── To-Do bindings ──
+      document.getElementById("btn-add-task")
+        .addEventListener("click", () => {
+          const inp = document.getElementById("task-input");
+          TodoList.addTask(inp.value);
+          inp.value = "";
+        });
+      document.getElementById("task-input")
+        .addEventListener("keydown", e => {
+          if (e.key === "Enter") {
+            TodoList.addTask(e.target.value);
+            e.target.value = "";
+          }
+        });
+      document.getElementById("task-list")
+        .addEventListener("click",   e => TodoList.handleClick(e));
+      document.getElementById("task-list")
+        .addEventListener("keydown", e => TodoList.handleKeydown(e));
+
+      // ── Quick Links bindings ──
+      document.getElementById("btn-add-link")
+        .addEventListener("click", () => {
+          QuickLinks.addLink(
+            document.getElementById("link-name-input").value,
+            document.getElementById("link-url-input").value
+          );
+          document.getElementById("link-name-input").value = "";
+          document.getElementById("link-url-input").value = "";
+        });
+      document.getElementById("links-list")
+        .addEventListener("click", e => QuickLinks.handleClick(e));
+    },
+  };
+
+  document.addEventListener("DOMContentLoaded", Bootstrap.init);
 
   // ─── EXPORT GUARD (for Vitest / Node test runner) ─────────────────────────────
   if (typeof module !== "undefined") {
-    module.exports = { KEYS, Storage, State, Theme, Timer, Greeting, formatTime, formatDate, getGreeting, composeGreeting, validateDuration, validateTaskText, createTask, validateLinkName, validateURL, createLink };
+    module.exports = {
+      KEYS, Storage, State,
+      formatTime, formatDate, getGreeting, composeGreeting,
+      validateDuration, validateTaskText, createTask,
+      validateLinkName, validateURL, createLink,
+      Greeting, Timer, TodoList, QuickLinks, Theme, Bootstrap,
+    };
   }
 
 })();
